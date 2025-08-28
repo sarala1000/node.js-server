@@ -73,9 +73,9 @@ file-upload-project/
 ### Running the Application
 
 #### Development Mode
-```bash
-npm run dev
-```
+   ```bash
+   npm run dev
+   ```
 This will start both the backend server (port 3000) and the Angular development server (port 4200).
 
 #### Production Mode

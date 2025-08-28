@@ -70,13 +70,17 @@ export class FileUploadComponent implements OnInit {
     this.selectedFile = file;
     console.log('Selected file set to:', this.selectedFile?.name);
     
-    // Mark for change detection
-    this.cdr.markForCheck();
+    // Force change detection immediately
+    this.ngZone.run(() => {
+      this.cdr.detectChanges();
+    });
     
     // Double check after change detection
     setTimeout(() => {
       console.log('After timeout - selected file:', this.selectedFile?.name);
-      this.cdr.markForCheck();
+      this.ngZone.run(() => {
+        this.cdr.detectChanges();
+      });
     }, 100);
   }
 
