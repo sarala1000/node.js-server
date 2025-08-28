@@ -1,12 +1,18 @@
+require('dotenv').config({ path: './config.env' });
 const express = require('express');
 const multer = require('multer');
 const crypto = require('crypto');
 const fs = require('fs-extra');
 const path = require('path');
 const cors = require('cors');
+const connectDB = require('./config/database');
+const File = require('./models/File');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Connect to MongoDB
+connectDB();
 
 // Middleware for parsing JSON and CORS
 app.use(express.json());
@@ -17,40 +23,7 @@ app.use(cors({
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
-const dataDir = path.join(__dirname, 'data');
 fs.ensureDirSync(uploadsDir);
-fs.ensureDirSync(dataDir);
-
-// Data storage file path
-const dataFilePath = path.join(dataDir, 'items.json');
-
-/**
- * Load existing data from JSON file
- * @returns {Array} Array of stored items
- */
-function loadData() {
-    try {
-        if (fs.existsSync(dataFilePath)) {
-            const data = fs.readFileSync(dataFilePath, 'utf8');
-            return JSON.parse(data);
-        }
-    } catch (error) {
-        console.error('Error loading data:', error);
-    }
-    return [];
-}
-
-/**
- * Save data to JSON file
- * @param {Array} data - Array of items to save
- */
-function saveData(data) {
-    try {
-        fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
-    } catch (error) {
-        console.error('Error saving data:', error);
-    }
-}
 
 /**
  * Generate hash for file content to detect duplicates
@@ -59,26 +32,6 @@ function saveData(data) {
  */
 function generateFileHash(fileBuffer) {
     return crypto.createHash('sha256').update(fileBuffer).digest('hex');
-}
-
-/**
- * Check if item already exists based on hash
- * @param {Array} existingData - Array of existing items
- * @param {string} fileHash - Hash of uploaded file
- * @returns {boolean} True if duplicate exists
- */
-function isDuplicate(existingData, fileHash) {
-    return existingData.some(item => item.hash === fileHash);
-}
-
-/**
- * Find the index of an item in the data array based on its hash
- * @param {Array} data - Array of items
- * @param {string} fileHash - Hash of the file to find
- * @returns {number} Index of the item, or -1 if not found
- */
-function findDuplicateIndex(data, fileHash) {
-    return data.findIndex(item => item.hash === fileHash);
 }
 
 // Configure multer for file uploads
@@ -100,165 +53,130 @@ const upload = multer({
     }
 });
 
-// API Routes
+// Health check endpoint
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'OK', message: 'File Upload API is running' });
+    res.json({ status: 'OK', message: 'Server is running' });
 });
 
-/**
- * POST /api/upload - Handle file upload with duplicate prevention
- * Uploads a file and saves metadata without duplicates
- */
+// Get all files
+app.get('/api/files', async (req, res) => {
+    try {
+        const files = await File.find().sort({ uploadDate: -1 });
+        res.json(files);
+    } catch (error) {
+        console.error('Error fetching files:', error);
+        res.status(500).json({ error: 'Failed to fetch files' });
+    }
+});
+
+// Get single file
+app.get('/api/files/:id', async (req, res) => {
+    try {
+        const file = await File.findById(req.params.id);
+        if (!file) {
+            return res.status(404).json({ error: 'File not found' });
+        }
+        res.json(file);
+    } catch (error) {
+        console.error('Error fetching file:', error);
+        res.status(500).json({ error: 'Failed to fetch file' });
+    }
+});
+
+// Upload file
 app.post('/api/upload', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
-        // Read file content to generate hash
+        // Generate hash for duplicate detection
         const fileBuffer = fs.readFileSync(req.file.path);
         const fileHash = generateFileHash(fileBuffer);
 
-        // Load existing data
-        const existingData = loadData();
-
-        // Check for duplicates
-        const duplicateIndex = findDuplicateIndex(existingData, fileHash);
-        const shouldReplace = req.body.replace === 'true';
-
-        if (duplicateIndex !== -1) {
-            if (shouldReplace) {
-                // Replace existing file
-                const oldItem = existingData[duplicateIndex];
-                
-                // Remove old file
-                if (fs.existsSync(oldItem.path)) {
-                    fs.removeSync(oldItem.path);
+        // Check for duplicate
+        const existingFile = await File.findOne({ hash: fileHash });
+        
+        if (existingFile) {
+            // If replace flag is true, replace the existing file
+            if (req.body.replace === 'true') {
+                // Delete old file from filesystem
+                if (fs.existsSync(existingFile.path)) {
+                    fs.removeSync(existingFile.path);
                 }
-
-                // Update item with new file info
-                existingData[duplicateIndex] = {
-                    ...oldItem,
-                    filename: req.file.originalname,
-                    savedFilename: req.file.filename,
-                    path: req.file.path,
-                    size: req.file.size,
-                    mimetype: req.file.mimetype,
-                    uploadDate: new Date().toISOString(),
-                    description: req.body.description || oldItem.description
-                };
-
-                // Save updated data
-                saveData(existingData);
-
-                res.status(200).json({
-                    message: 'File replaced successfully',
-                    item: existingData[duplicateIndex]
+                
+                // Update database record
+                existingFile.filename = req.file.originalname;
+                existingFile.savedFilename = req.file.filename;
+                existingFile.path = req.file.path;
+                existingFile.size = req.file.size;
+                existingFile.mimetype = req.file.mimetype;
+                existingFile.uploadDate = new Date();
+                existingFile.description = req.body.description || existingFile.description;
+                
+                await existingFile.save();
+                
+                res.status(200).json({ 
+                    message: 'File replaced successfully', 
+                    item: existingFile 
                 });
             } else {
-                // Remove uploaded file since it's a duplicate and user doesn't want to replace
+                // Delete uploaded file and return error
                 fs.removeSync(req.file.path);
                 return res.status(409).json({ 
-                    error: 'File already exists',
-                    message: 'This file has already been uploaded'
+                    error: 'File already exists', 
+                    message: 'This file has already been uploaded' 
                 });
             }
         } else {
-            // Create new item object
-            const newItem = {
-                id: Date.now().toString(),
+            // Create new file record
+            const newFile = new File({
                 filename: req.file.originalname,
                 savedFilename: req.file.filename,
                 path: req.file.path,
                 size: req.file.size,
                 mimetype: req.file.mimetype,
                 hash: fileHash,
-                uploadDate: new Date().toISOString(),
                 description: req.body.description || ''
-            };
+            });
 
-            // Add to existing data
-            existingData.push(newItem);
-
-            // Save updated data
-            saveData(existingData);
-
-            res.status(201).json({
-                message: 'File uploaded successfully',
-                item: newItem
+            await newFile.save();
+            
+            res.status(201).json({ 
+                message: 'File uploaded successfully', 
+                item: newFile 
             });
         }
-
     } catch (error) {
-        console.error('Upload error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Error uploading file:', error);
+        // Clean up uploaded file if there was an error
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.removeSync(req.file.path);
+        }
+        res.status(500).json({ error: 'Failed to upload file' });
     }
 });
 
-/**
- * GET /api/files - Get list of all uploaded files
- * Returns array of file metadata
- */
-app.get('/api/files', (req, res) => {
+// Delete file
+app.delete('/api/files/:id', async (req, res) => {
     try {
-        const data = loadData();
-        res.json(data);
-    } catch (error) {
-        console.error('Error fetching files:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-/**
- * GET /api/files/:id - Get specific file metadata
- * @param {string} id - File ID
- */
-app.get('/api/files/:id', (req, res) => {
-    try {
-        const data = loadData();
-        const item = data.find(item => item.id === req.params.id);
-        
-        if (!item) {
+        const file = await File.findById(req.params.id);
+        if (!file) {
             return res.status(404).json({ error: 'File not found' });
         }
-        
-        res.json(item);
-    } catch (error) {
-        console.error('Error fetching file:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
 
-/**
- * DELETE /api/files/:id - Delete specific file
- * @param {string} id - File ID
- */
-app.delete('/api/files/:id', (req, res) => {
-    try {
-        const data = loadData();
-        const itemIndex = data.findIndex(item => item.id === req.params.id);
-        
-        if (itemIndex === -1) {
-            return res.status(404).json({ error: 'File not found' });
+        // Delete file from filesystem
+        if (fs.existsSync(file.path)) {
+            fs.removeSync(file.path);
         }
-        
-        const item = data[itemIndex];
-        
-        // Remove file from filesystem
-        if (fs.existsSync(item.path)) {
-            fs.removeSync(item.path);
-        }
-        
-        // Remove from data array
-        data.splice(itemIndex, 1);
-        
-        // Save updated data
-        saveData(data);
+
+        // Delete from database
+        await File.findByIdAndDelete(req.params.id);
         
         res.json({ message: 'File deleted successfully' });
     } catch (error) {
         console.error('Error deleting file:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Failed to delete file' });
     }
 });
 
@@ -266,5 +184,4 @@ app.delete('/api/files/:id', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`Uploads directory: ${uploadsDir}`);
-    console.log(`Data file: ${dataFilePath}`);
 });
