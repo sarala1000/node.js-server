@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, Output, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -22,7 +22,7 @@ export class FileUploadComponent {
   statusMessage = '';
   statusType: 'success' | 'error' | '' = '';
 
-  constructor(private fileService: FileService) {}
+  constructor(private fileService: FileService, private cdr: ChangeDetectorRef) {}
 
   onDragOver(event: DragEvent): void {
     event.preventDefault();
@@ -59,6 +59,8 @@ export class FileUploadComponent {
     }
 
     this.selectedFile = file;
+    // Force change detection to update the view
+    this.cdr.detectChanges();
   }
 
   async uploadFile(): Promise<void> {
