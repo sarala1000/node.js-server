@@ -71,6 +71,16 @@ function isDuplicate(existingData, fileHash) {
     return existingData.some(item => item.hash === fileHash);
 }
 
+/**
+ * Find the index of an item in the data array based on its hash
+ * @param {Array} data - Array of items
+ * @param {string} fileHash - Hash of the file to find
+ * @returns {number} Index of the item, or -1 if not found
+ */
+function findDuplicateIndex(data, fileHash) {
+    return data.findIndex(item => item.hash === fileHash);
+}
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -113,38 +123,71 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         const existingData = loadData();
 
         // Check for duplicates
-        if (isDuplicate(existingData, fileHash)) {
-            // Remove uploaded file since it's a duplicate
-            fs.removeSync(req.file.path);
-            return res.status(409).json({ 
-                error: 'File already exists',
-                message: 'This file has already been uploaded'
+        const duplicateIndex = findDuplicateIndex(existingData, fileHash);
+        const shouldReplace = req.body.replace === 'true';
+
+        if (duplicateIndex !== -1) {
+            if (shouldReplace) {
+                // Replace existing file
+                const oldItem = existingData[duplicateIndex];
+                
+                // Remove old file
+                if (fs.existsSync(oldItem.path)) {
+                    fs.removeSync(oldItem.path);
+                }
+
+                // Update item with new file info
+                existingData[duplicateIndex] = {
+                    ...oldItem,
+                    filename: req.file.originalname,
+                    savedFilename: req.file.filename,
+                    path: req.file.path,
+                    size: req.file.size,
+                    mimetype: req.file.mimetype,
+                    uploadDate: new Date().toISOString(),
+                    description: req.body.description || oldItem.description
+                };
+
+                // Save updated data
+                saveData(existingData);
+
+                res.status(200).json({
+                    message: 'File replaced successfully',
+                    item: existingData[duplicateIndex]
+                });
+            } else {
+                // Remove uploaded file since it's a duplicate and user doesn't want to replace
+                fs.removeSync(req.file.path);
+                return res.status(409).json({ 
+                    error: 'File already exists',
+                    message: 'This file has already been uploaded'
+                });
+            }
+        } else {
+            // Create new item object
+            const newItem = {
+                id: Date.now().toString(),
+                filename: req.file.originalname,
+                savedFilename: req.file.filename,
+                path: req.file.path,
+                size: req.file.size,
+                mimetype: req.file.mimetype,
+                hash: fileHash,
+                uploadDate: new Date().toISOString(),
+                description: req.body.description || ''
+            };
+
+            // Add to existing data
+            existingData.push(newItem);
+
+            // Save updated data
+            saveData(existingData);
+
+            res.status(201).json({
+                message: 'File uploaded successfully',
+                item: newItem
             });
         }
-
-        // Create new item object
-        const newItem = {
-            id: Date.now().toString(),
-            filename: req.file.originalname,
-            savedFilename: req.file.filename,
-            path: req.file.path,
-            size: req.file.size,
-            mimetype: req.file.mimetype,
-            hash: fileHash,
-            uploadDate: new Date().toISOString(),
-            description: req.body.description || ''
-        };
-
-        // Add to existing data
-        existingData.push(newItem);
-
-        // Save updated data
-        saveData(existingData);
-
-        res.status(201).json({
-            message: 'File uploaded successfully',
-            item: newItem
-        });
 
     } catch (error) {
         console.error('Upload error:', error);

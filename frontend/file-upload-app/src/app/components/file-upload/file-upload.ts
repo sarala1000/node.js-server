@@ -21,6 +21,8 @@ export class FileUploadComponent {
   uploadProgress = 0;
   statusMessage = '';
   statusType: 'success' | 'error' | '' = '';
+  showDuplicateDialog = false;
+  duplicateFileName = '';
 
   constructor(private fileService: FileService, private cdr: ChangeDetectorRef) {}
 
@@ -85,11 +87,31 @@ export class FileUploadComponent {
       clearInterval(progressInterval);
       this.uploadProgress = 100;
 
+      // Check if the response indicates a duplicate file
+      if (result.message && result.message.includes('already exists')) {
+        this.duplicateFileName = this.selectedFile.name;
+        this.showDuplicateDialog = true;
+        this.isUploading = false;
+        this.uploadProgress = 0;
+        this.cdr.detectChanges();
+        return;
+      }
+
       this.showStatus('File uploaded successfully!', 'success');
       this.resetForm();
       this.fileUploaded.emit();
 
     } catch (error: any) {
+      // Check if it's a duplicate file error
+      if (error.error?.error && error.error.error.includes('already exists')) {
+        this.duplicateFileName = this.selectedFile.name;
+        this.showDuplicateDialog = true;
+        this.isUploading = false;
+        this.uploadProgress = 0;
+        this.cdr.detectChanges();
+        return;
+      }
+      
       this.showStatus(error.error?.error || 'Upload failed', 'error');
     } finally {
       this.isUploading = false;
@@ -97,6 +119,46 @@ export class FileUploadComponent {
         this.uploadProgress = 0;
       }, 2000);
     }
+  }
+
+  async replaceFile(): Promise<void> {
+    this.showDuplicateDialog = false;
+    this.isUploading = true;
+    this.uploadProgress = 0;
+
+    try {
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        if (this.uploadProgress < 90) {
+          this.uploadProgress += 10;
+        }
+      }, 100);
+
+      // Add a flag to indicate replacement
+      const result = await firstValueFrom(this.fileService.uploadFile(this.selectedFile, this.description, true));
+      
+      clearInterval(progressInterval);
+      this.uploadProgress = 100;
+
+      this.showStatus('File replaced successfully!', 'success');
+      this.resetForm();
+      this.fileUploaded.emit();
+
+    } catch (error: any) {
+      this.showStatus(error.error?.error || 'Replace failed', 'error');
+    } finally {
+      this.isUploading = false;
+      setTimeout(() => {
+        this.uploadProgress = 0;
+      }, 2000);
+    }
+  }
+
+  cancelReplace(): void {
+    this.showDuplicateDialog = false;
+    this.duplicateFileName = '';
+    this.resetForm();
+    this.cdr.detectChanges();
   }
 
   private resetForm(): void {

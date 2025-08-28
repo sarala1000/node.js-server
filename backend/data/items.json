@@ -42,5 +42,27 @@
     "hash": "1e38c62f285acb1b23a94c925b4a5773106c232513f5aed586add6f7da77615c",
     "uploadDate": "2025-08-28T12:23:56.210Z",
     "description": ""
+  },
+  {
+    "id": "1756385837625",
+    "filename": "image01.jpg",
+    "savedFilename": "file-1756385837616-609536188.jpg",
+    "path": "C:\\Users\\USER\\Desktop\\node.js-server\\backend\\uploads\\file-1756385837616-609536188.jpg",
+    "size": 29297,
+    "mimetype": "image/jpeg",
+    "hash": "7d0c8cd1909fbe978fe71f5380f2179f2371f41e0c871958d2eb33afb8432c27",
+    "uploadDate": "2025-08-28T12:57:17.625Z",
+    "description": "סתם"
+  },
+  {
+    "id": "1756385883083",
+    "filename": "b_pick_t_151796646.jpg",
+    "savedFilename": "file-1756385883075-9348567.jpg",
+    "path": "C:\\Users\\USER\\Desktop\\node.js-server\\backend\\uploads\\file-1756385883075-9348567.jpg",
+    "size": 67954,
+    "mimetype": "image/jpeg",
+    "hash": "80fe4c8cb2e3cb7584ac27aae1c7187392c123dfd80092956e82af75fca3e60a",
+    "uploadDate": "2025-08-28T12:58:03.083Z",
+    "description": ""
   }
 ]

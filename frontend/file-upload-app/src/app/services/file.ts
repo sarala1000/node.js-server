@@ -22,10 +22,11 @@ export class FileService {
   }
 
   // Upload file
-  uploadFile(file: any, description: string): Observable<any> {
+  uploadFile(file: any, description: string, replace: boolean = false): Observable<any> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('description', description);
+    formData.append('replace', replace.toString());
     
     return this.http.post(`${this.apiUrl}/upload`, formData);
   }
