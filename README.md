@@ -1,198 +1,173 @@
-# File Upload Server with Duplicate Prevention
+# File Upload Application
 
-A Node.js server that allows file uploads with automatic duplicate detection and prevention. Files are saved to the local computer and metadata is stored in a JSON file.
+A modern file upload application built with Angular frontend and Node.js backend, featuring automatic duplicate detection and a beautiful user interface.
 
-## Features
+## 🚀 Features
 
-- 📁 **File Upload**: Drag & drop or click to upload files
-- 🔍 **Duplicate Detection**: Uses SHA256 hash to prevent duplicate files
-- 💾 **Local Storage**: Files saved to local computer
-- 📊 **Metadata Storage**: File information stored in JSON format
-- 🎨 **Modern UI**: Beautiful, responsive web interface
-- 🗑️ **File Management**: View and delete uploaded files
-- 📝 **Descriptions**: Add optional descriptions to files
+- **Modern UI**: Beautiful, responsive design with drag & drop functionality
+- **Duplicate Detection**: Automatic detection and prevention of duplicate file uploads
+- **File Management**: Upload, view, and delete files with ease
+- **Progress Tracking**: Real-time upload progress indication
+- **File Descriptions**: Add optional descriptions to uploaded files
+- **Size Validation**: 10MB file size limit with client-side validation
 
-## Installation
+## 📁 Project Structure
 
-1. **Install dependencies**:
+```
+file-upload-project/
+├── backend/                 # Node.js Express server
+│   ├── server.js           # Main server file
+│   ├── package.json        # Backend dependencies
+│   ├── uploads/            # Uploaded files storage
+│   └── data/               # File metadata storage
+├── frontend/               # Angular application
+│   └── file-upload-app/    # Angular project
+│       ├── src/
+│       │   ├── app/
+│       │   │   ├── components/
+│       │   │   │   ├── file-upload/    # File upload component
+│       │   │   │   └── file-list/      # File list component
+│       │   │   ├── services/
+│       │   │   │   └── file.ts         # File service
+│       │   │   └── models/
+│       │   │       └── file.ts         # File interface
+│       │   └── ...
+│       └── package.json
+└── package.json            # Root package.json with scripts
+```
+
+## 🛠️ Technology Stack
+
+### Backend
+- **Node.js** - Runtime environment
+- **Express.js** - Web framework
+- **Multer** - File upload middleware
+- **CORS** - Cross-origin resource sharing
+- **fs-extra** - Enhanced file system operations
+
+### Frontend
+- **Angular 17** - Modern frontend framework
+- **TypeScript** - Type-safe JavaScript
+- **SCSS** - Advanced CSS preprocessing
+- **RxJS** - Reactive programming
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js (v18 or higher)
+- npm (v9 or higher)
+
+### Installation
+
+1. **Clone the repository**
    ```bash
-   npm install
+   git clone <repository-url>
+   cd file-upload-project
    ```
 
-2. **Start the server**:
+2. **Install all dependencies**
    ```bash
-   npm start
+   npm run install-all
    ```
 
-3. **For development with auto-restart**:
-   ```bash
-   npm run dev
-   ```
+### Running the Application
 
-## Usage
+#### Development Mode
+```bash
+npm run dev
+```
+This will start both the backend server (port 3000) and the Angular development server (port 4200).
 
-1. Open your browser and navigate to `http://localhost:3000`
-2. Drag and drop files or click to browse
-3. Add an optional description
-4. Click "Upload File"
-5. View uploaded files in the list below
-6. Delete files using the delete button
-
-## API Endpoints
-
-### POST /upload
-Upload a file with duplicate prevention.
-
-**Request**: Multipart form data with:
-- `file`: The file to upload
-- `description` (optional): File description
-
-**Response**:
-```json
-{
-  "message": "File uploaded successfully",
-  "item": {
-    "id": "1234567890",
-    "filename": "example.jpg",
-    "savedFilename": "file-1234567890-123456789.jpg",
-    "path": "/path/to/uploads/file-1234567890-123456789.jpg",
-    "size": 1024,
-    "mimetype": "image/jpeg",
-    "hash": "sha256_hash_here",
-    "uploadDate": "2024-01-01T12:00:00.000Z",
-    "description": "Optional description"
-  }
-}
+#### Production Mode
+```bash
+npm start
 ```
 
-### GET /files
-Get list of all uploaded files.
+#### Individual Services
+- **Backend only**: `npm run start:backend`
+- **Frontend only**: `npm run start:frontend`
 
-**Response**:
-```json
-[
-  {
-    "id": "1234567890",
-    "filename": "example.jpg",
-    "savedFilename": "file-1234567890-123456789.jpg",
-    "path": "/path/to/uploads/file-1234567890-123456789.jpg",
-    "size": 1024,
-    "mimetype": "image/jpeg",
-    "hash": "sha256_hash_here",
-    "uploadDate": "2024-01-01T12:00:00.000Z",
-    "description": "Optional description"
-  }
-]
+### Accessing the Application
+- **Frontend**: http://localhost:4200
+- **Backend API**: http://localhost:3000/api
+
+## 📡 API Endpoints
+
+### Health Check
+- `GET /api/health` - Check API status
+
+### File Operations
+- `GET /api/files` - Get all uploaded files
+- `GET /api/files/:id` - Get specific file metadata
+- `POST /api/upload` - Upload a new file
+- `DELETE /api/files/:id` - Delete a file
+
+## 🔧 Configuration
+
+### Backend Configuration
+The backend server runs on port 3000 by default. You can change this by setting the `PORT` environment variable:
+
+```bash
+PORT=4000 npm run start:backend
 ```
 
-### GET /files/:id
-Get specific file metadata.
+### Frontend Configuration
+The Angular application runs on port 4200 by default. The API URL is configured in `frontend/file-upload-app/src/app/services/file.ts`.
 
-**Response**: Same as individual item in the files list.
+## 📦 Building for Production
 
-### DELETE /files/:id
-Delete a specific file.
-
-**Response**:
-```json
-{
-  "message": "File deleted successfully"
-}
+```bash
+npm run build
 ```
 
-## File Structure
+This will create a production build of the Angular application in the `frontend/file-upload-app/dist/` directory.
 
-```
-project-node/
-├── server.js          # Main server file
-├── package.json       # Dependencies and scripts
-├── README.md         # This file
-├── public/
-│   └── index.html    # Web interface
-├── uploads/          # Uploaded files (created automatically)
-└── data/
-    └── items.json    # File metadata (created automatically)
+## 🧪 Testing
+
+```bash
+npm test
 ```
 
-## How Duplicate Prevention Works
+## 📝 File Upload Process
 
-1. **Hash Generation**: When a file is uploaded, a SHA256 hash is generated from the file content
-2. **Duplicate Check**: The hash is compared against existing file hashes in the database
-3. **Prevention**: If a matching hash is found, the upload is rejected and the file is deleted
-4. **Storage**: Only unique files are saved to the filesystem and database
+1. **Drag & Drop**: Users can drag files directly onto the upload area
+2. **File Selection**: Click the upload area to browse and select files
+3. **Validation**: Client-side validation checks file size (10MB limit)
+4. **Upload**: Files are uploaded with progress indication
+5. **Duplicate Check**: Server checks for duplicate files using SHA256 hash
+6. **Storage**: Files are stored in the `backend/uploads/` directory
+7. **Metadata**: File information is stored in `backend/data/items.json`
 
-## Configuration
+## 🔒 Security Features
 
-### File Size Limit
-Default: 10MB
-```javascript
-// In server.js
-const upload = multer({ 
-    storage: storage,
-    limits: {
-        fileSize: 10 * 1024 * 1024 // 10MB limit
-    }
-});
-```
+- **File Size Limits**: 10MB maximum file size
+- **Duplicate Prevention**: SHA256 hash-based duplicate detection
+- **CORS Configuration**: Properly configured for development
+- **Input Validation**: Client and server-side validation
 
-### Port Configuration
-Default: 3000
-```javascript
-// In server.js
-const PORT = process.env.PORT || 3000;
-```
+## 🎨 UI Features
 
-## Error Handling
+- **Responsive Design**: Works on desktop and mobile devices
+- **Drag & Drop**: Intuitive file upload interface
+- **Progress Indicators**: Real-time upload progress
+- **Status Messages**: Success and error notifications
+- **Modern Styling**: Beautiful gradient design with smooth animations
 
-The server handles various error scenarios:
+## 🤝 Contributing
 
-- **No file uploaded**: Returns 400 error
-- **File too large**: Returns 400 error
-- **Duplicate file**: Returns 409 error
-- **File not found**: Returns 404 error
-- **Server errors**: Returns 500 error
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-## Security Features
+## 📄 License
 
-- **File size limits**: Prevents large file uploads
-- **Unique filenames**: Prevents filename conflicts
-- **Content-based deduplication**: Uses file content hash, not filename
-- **Input validation**: Validates file uploads
+This project is licensed under the MIT License.
 
-## Development
+## 🆘 Support
 
-### Adding New Features
-
-1. **New API endpoints**: Add routes in `server.js`
-2. **UI changes**: Modify `public/index.html`
-3. **Data structure**: Update the item object structure in upload handler
-
-### Testing
-
-1. Start the server: `npm start`
-2. Open browser to `http://localhost:3000`
-3. Test file uploads with various file types
-4. Test duplicate prevention by uploading the same file twice
-5. Test file deletion
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Port already in use**: Change the PORT variable in `server.js`
-2. **Permission errors**: Ensure write permissions for uploads and data directories
-3. **File not found**: Check if the uploads directory exists
-
-### Logs
-
-The server logs important information:
-- Server startup with port and directory information
-- Upload success/failure messages
-- Error details for debugging
-
-## License
-
-MIT License - feel free to use and modify as needed.
+If you encounter any issues or have questions, please open an issue in the repository.
 
 
 

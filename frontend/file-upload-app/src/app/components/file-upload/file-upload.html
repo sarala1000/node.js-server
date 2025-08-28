@@ -1,0 +1,46 @@
+<div class="upload-section">
+  <div 
+    class="upload-area" 
+    [class.dragover]="isDragging"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+    (click)="fileInput.click()">
+    
+    <div class="upload-icon">📤</div>
+    <div class="upload-text">
+      {{ selectedFile ? selectedFile.name : 'Drag & drop files here or click to browse' }}
+    </div>
+    <div class="upload-hint">Maximum file size: 10MB</div>
+    <input 
+      #fileInput
+      type="file" 
+      id="fileInput" 
+      class="file-input" 
+      accept="*/*"
+      (change)="onFileSelected($event)">
+  </div>
+
+  <input 
+    type="text" 
+    class="description-input" 
+    placeholder="File description (optional)"
+    [(ngModel)]="description">
+
+  <button 
+    class="upload-btn" 
+    [disabled]="!selectedFile || isUploading"
+    (click)="uploadFile()">
+    
+    <span *ngIf="isUploading" class="loading"></span>
+    {{ isUploading ? 'Uploading...' : (selectedFile ? 'Upload ' + selectedFile.name : 'Upload File') }}
+  </button>
+
+  <div class="progress-bar" *ngIf="isUploading">
+    <div class="progress-fill" [style.width.%]="uploadProgress"></div>
+  </div>
+
+  <div class="status" *ngIf="statusMessage" [class]="statusType">
+    {{ statusMessage }}
+  </div>
+</div>

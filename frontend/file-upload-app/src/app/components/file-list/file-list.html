@@ -1,0 +1,38 @@
+<div class="files-section">
+  <div class="files-header">
+    <h2 class="files-title">Uploaded Files</h2>
+  </div>
+  
+  <div class="files-list">
+    <div *ngIf="isLoading" class="loading-container">
+      <div class="loading"></div>
+      <p>Loading files...</p>
+    </div>
+
+    <div *ngIf="!isLoading && errorMessage" class="error-message">
+      {{ errorMessage }}
+    </div>
+
+    <div *ngIf="!isLoading && !errorMessage && files.length === 0" class="no-files">
+      No files uploaded yet
+    </div>
+
+    <div *ngIf="!isLoading && !errorMessage && files.length > 0" class="file-items">
+      <div *ngFor="let file of files" class="file-item">
+        <div class="file-info">
+          <div class="file-name">{{ file.filename }}</div>
+          <div class="file-details">
+            Size: {{ formatFileSize(file.size) }} | 
+            Uploaded: {{ formatDate(file.uploadDate) }}
+            <span *ngIf="file.description">| {{ file.description }}</span>
+          </div>
+        </div>
+        <div class="file-actions">
+          <button class="delete-btn" (click)="deleteFile(file.id)">
+            🗑️ Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
