@@ -2,11 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FileService } from '../../services/file';
 import { File } from '../../models/file';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-file-list',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './file-list.html',
   styleUrl: './file-list.scss'
 })
@@ -47,11 +48,21 @@ export class FileListComponent implements OnInit {
 
     this.fileService.deleteFile(fileId).subscribe({
       next: () => {
-        this.loadFiles(); // Reload the list
+        console.log('File deleted successfully');
+        // Remove the file from the local array immediately
+        this.files = this.files.filter(file => file.id !== fileId);
+        console.log('File removed from local array, remaining files:', this.files.length);
       },
       error: (error) => {
         console.error('Error deleting file:', error);
-        alert('Error deleting file');
+        
+        // If it's a 404 error, the file might already be deleted
+        if (error.status === 404) {
+          console.log('File not found (404), removing from local array');
+          this.files = this.files.filter(file => file.id !== fileId);
+        } else {
+          alert('Error deleting file: ' + (error.error?.error || error.message || 'Unknown error'));
+        }
       }
     });
   }

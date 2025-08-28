@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, ChangeDetectorRef } from '@angular/core';
+import { Component, EventEmitter, Output, ChangeDetectorRef, OnInit, NgZone, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -9,9 +9,10 @@ import { FileService } from '../../services/file';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './file-upload.html',
-  styleUrl: './file-upload.scss'
+  styleUrl: './file-upload.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class FileUploadComponent {
+export class FileUploadComponent implements OnInit {
   @Output() fileUploaded = new EventEmitter<void>();
 
   selectedFile: File | null = null;
@@ -24,7 +25,11 @@ export class FileUploadComponent {
   showDuplicateDialog = false;
   duplicateFileName = '';
 
-  constructor(private fileService: FileService, private cdr: ChangeDetectorRef) {}
+  constructor(private fileService: FileService, private cdr: ChangeDetectorRef, private ngZone: NgZone) {}
+
+  ngOnInit(): void {
+    console.log('FileUploadComponent initialized');
+  }
 
   onDragOver(event: DragEvent): void {
     event.preventDefault();
@@ -54,6 +59,8 @@ export class FileUploadComponent {
   }
 
   private handleFileSelect(file: File): void {
+    console.log('File selected:', file.name, file.size);
+    
     // Check file size (10MB limit)
     if (file.size > 10 * 1024 * 1024) {
       this.showStatus('File size exceeds 10MB limit', 'error');
@@ -61,8 +68,16 @@ export class FileUploadComponent {
     }
 
     this.selectedFile = file;
-    // Force change detection to update the view
-    this.cdr.detectChanges();
+    console.log('Selected file set to:', this.selectedFile?.name);
+    
+    // Mark for change detection
+    this.cdr.markForCheck();
+    
+    // Double check after change detection
+    setTimeout(() => {
+      console.log('After timeout - selected file:', this.selectedFile?.name);
+      this.cdr.markForCheck();
+    }, 100);
   }
 
   async uploadFile(): Promise<void> {
@@ -93,13 +108,14 @@ export class FileUploadComponent {
         this.showDuplicateDialog = true;
         this.isUploading = false;
         this.uploadProgress = 0;
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
         return;
       }
 
       this.showStatus('File uploaded successfully!', 'success');
       this.resetForm();
       this.fileUploaded.emit();
+      console.log('File upload completed, emitting event');
 
     } catch (error: any) {
       // Check if it's a duplicate file error
@@ -108,7 +124,7 @@ export class FileUploadComponent {
         this.showDuplicateDialog = true;
         this.isUploading = false;
         this.uploadProgress = 0;
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
         return;
       }
       
@@ -143,6 +159,7 @@ export class FileUploadComponent {
       this.showStatus('File replaced successfully!', 'success');
       this.resetForm();
       this.fileUploaded.emit();
+      console.log('File replace completed, emitting event');
 
     } catch (error: any) {
       this.showStatus(error.error?.error || 'Replace failed', 'error');
@@ -158,12 +175,14 @@ export class FileUploadComponent {
     this.showDuplicateDialog = false;
     this.duplicateFileName = '';
     this.resetForm();
-    this.cdr.detectChanges();
+    this.cdr.markForCheck();
+    console.log('File upload cancelled');
   }
 
   private resetForm(): void {
     this.selectedFile = null;
     this.description = '';
+    this.cdr.markForCheck();
     const fileInput = document.getElementById('fileInput') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
@@ -173,10 +192,12 @@ export class FileUploadComponent {
   private showStatus(message: string, type: 'success' | 'error'): void {
     this.statusMessage = message;
     this.statusType = type;
+    this.cdr.markForCheck();
     
     setTimeout(() => {
       this.statusMessage = '';
       this.statusType = '';
+      this.cdr.markForCheck();
     }, 5000);
   }
 }

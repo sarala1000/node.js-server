@@ -17,6 +17,7 @@ export class App {
 
   onFileUploaded(): void {
     // Reload the file list when a file is uploaded successfully
+    console.log('File uploaded event received, reloading file list');
     if (this.fileListComponent) {
       this.fileListComponent.loadFiles();
     }

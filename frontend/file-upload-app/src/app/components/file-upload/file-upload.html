@@ -10,6 +10,7 @@
     <div class="upload-icon">📤</div>
     <div class="upload-text">
       {{ selectedFile ? selectedFile.name : 'Drag & drop files here or click to browse' }}
+      <!-- Debug: {{ selectedFile?.name || 'No file selected' }} -->
     </div>
     <div class="upload-hint">Maximum file size: 10MB</div>
     <input 

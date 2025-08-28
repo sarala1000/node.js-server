@@ -29,10 +29,12 @@
         </div>
         <div class="file-actions">
           <button class="download-btn" (click)="downloadFile(file.id)">
-            📥 Download
+            <mat-icon>download</mat-icon>
+            Download
           </button>
           <button class="delete-btn" (click)="deleteFile(file.id)">
-            🗑️ Delete
+            <mat-icon>delete_forever</mat-icon>
+            Delete
           </button>
         </div>
       </div>
