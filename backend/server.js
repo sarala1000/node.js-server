@@ -21,9 +21,7 @@ app.use(cors({
     credentials: true
 }));
 
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, 'uploads');
-fs.ensureDirSync(uploadsDir);
+// No need for uploads directory - files are stored in MongoDB
 
 /**
  * Generate hash for file content to detect duplicates
@@ -34,20 +32,9 @@ function generateFileHash(fileBuffer) {
     return crypto.createHash('sha256').update(fileBuffer).digest('hex');
 }
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadsDir);
-    },
-    filename: function (req, file, cb) {
-        // Generate unique filename with timestamp
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
-
+// Configure multer for memory storage (to save in MongoDB)
 const upload = multer({ 
-    storage: storage,
+    storage: multer.memoryStorage(),
     limits: {
         fileSize: 10 * 1024 * 1024 // 10MB limit
     }
@@ -62,7 +49,34 @@ app.get('/api/health', (req, res) => {
 app.get('/api/files', async (req, res) => {
     try {
         const files = await File.find().sort({ uploadDate: -1 });
-        res.json(files);
+        
+        // Transform old schema files to new schema and convert _id to id
+        const transformedFiles = files.map(file => {
+            const fileObj = file.toObject();
+            
+            // If file has old schema (path field), transform it
+            if (fileObj.path && !fileObj.originalName) {
+                return {
+                    ...fileObj,
+                    originalName: fileObj.filename || fileObj.savedFilename || 'Unknown file',
+                    // Remove old fields
+                    path: undefined,
+                    savedFilename: undefined
+                };
+            }
+            
+            return fileObj;
+        });
+        
+        // Convert _id to id for frontend compatibility
+        const filesWithId = transformedFiles.map(file => ({
+            ...file,
+            id: file._id,
+            _id: undefined
+        }));
+        
+        console.log('Files being sent to frontend:', filesWithId.map(f => ({ id: f.id, filename: f.filename })));
+        res.json(filesWithId);
     } catch (error) {
         console.error('Error fetching files:', error);
         res.status(500).json({ error: 'Failed to fetch files' });
@@ -91,8 +105,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         }
 
         // Generate hash for duplicate detection
-        const fileBuffer = fs.readFileSync(req.file.path);
-        const fileHash = generateFileHash(fileBuffer);
+        const fileHash = generateFileHash(req.file.buffer);
 
         // Check for duplicate
         const existingFile = await File.findOne({ hash: fileHash });
@@ -100,17 +113,12 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         if (existingFile) {
             // If replace flag is true, replace the existing file
             if (req.body.replace === 'true') {
-                // Delete old file from filesystem
-                if (fs.existsSync(existingFile.path)) {
-                    fs.removeSync(existingFile.path);
-                }
-                
                 // Update database record
                 existingFile.filename = req.file.originalname;
-                existingFile.savedFilename = req.file.filename;
-                existingFile.path = req.file.path;
+                existingFile.originalName = req.file.originalname;
                 existingFile.size = req.file.size;
                 existingFile.mimetype = req.file.mimetype;
+                existingFile.data = req.file.buffer;
                 existingFile.uploadDate = new Date();
                 existingFile.description = req.body.description || existingFile.description;
                 
@@ -121,8 +129,6 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
                     item: existingFile 
                 });
             } else {
-                // Delete uploaded file and return error
-                fs.removeSync(req.file.path);
                 return res.status(409).json({ 
                     error: 'File already exists', 
                     message: 'This file has already been uploaded' 
@@ -132,10 +138,10 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
             // Create new file record
             const newFile = new File({
                 filename: req.file.originalname,
-                savedFilename: req.file.filename,
-                path: req.file.path,
+                originalName: req.file.originalname,
                 size: req.file.size,
                 mimetype: req.file.mimetype,
+                data: req.file.buffer,
                 hash: fileHash,
                 description: req.body.description || ''
             });
@@ -149,11 +155,28 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         }
     } catch (error) {
         console.error('Error uploading file:', error);
-        // Clean up uploaded file if there was an error
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.removeSync(req.file.path);
-        }
         res.status(500).json({ error: 'Failed to upload file' });
+    }
+});
+
+// Download file
+app.get('/api/files/:id/download', async (req, res) => {
+    try {
+        const file = await File.findById(req.params.id);
+        if (!file) {
+            return res.status(404).json({ error: 'File not found' });
+        }
+
+        res.set({
+            'Content-Type': file.mimetype,
+            'Content-Disposition': `attachment; filename="${file.originalName}"`,
+            'Content-Length': file.size
+        });
+
+        res.send(file.data);
+    } catch (error) {
+        console.error('Error downloading file:', error);
+        res.status(500).json({ error: 'Failed to download file' });
     }
 });
 
@@ -165,23 +188,30 @@ app.delete('/api/files/:id', async (req, res) => {
             return res.status(404).json({ error: 'File not found' });
         }
 
-        // Delete file from filesystem
-        if (fs.existsSync(file.path)) {
-            fs.removeSync(file.path);
-        }
-
-        // Delete from database
+        // Delete from database (file data is stored in MongoDB)
         await File.findByIdAndDelete(req.params.id);
         
         res.json({ message: 'File deleted successfully' });
     } catch (error) {
         console.error('Error deleting file:', error);
-        res.status(500).json({ error: 'Failed to delete file' });
+        
+        // If it's a validation error, try to delete with old schema
+        if (error.name === 'ValidationError' || error.message.includes('path')) {
+            try {
+                await File.findByIdAndDelete(req.params.id);
+                res.json({ message: 'File deleted successfully' });
+            } catch (deleteError) {
+                console.error('Error deleting file with old schema:', deleteError);
+                res.status(500).json({ error: 'Failed to delete file' });
+            }
+        } else {
+            res.status(500).json({ error: 'Failed to delete file' });
+        }
     }
 });
 
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Uploads directory: ${uploadsDir}`);
+    console.log('Files are stored in MongoDB');
 });

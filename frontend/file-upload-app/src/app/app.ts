@@ -1,13 +1,12 @@
 import { Component, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet } from '@angular/router';
 import { FileUploadComponent } from './components/file-upload/file-upload';
 import { FileListComponent } from './components/file-list/file-list';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, FileUploadComponent, FileListComponent],
+  imports: [CommonModule, FileUploadComponent, FileListComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })

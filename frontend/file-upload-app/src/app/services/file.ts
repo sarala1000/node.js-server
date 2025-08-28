@@ -36,6 +36,11 @@ export class FileService {
     return this.http.delete(`${this.apiUrl}/files/${id}`);
   }
 
+  // Download file
+  downloadFile(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/files/${id}/download`, { responseType: 'blob' });
+  }
+
   // Check API health
   checkHealth(): Observable<any> {
     return this.http.get(`${this.apiUrl}/health`);

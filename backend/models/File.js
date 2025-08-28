@@ -5,11 +5,7 @@ const fileSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  savedFilename: {
-    type: String,
-    required: true
-  },
-  path: {
+  originalName: {
     type: String,
     required: true
   },
@@ -19,6 +15,10 @@ const fileSchema = new mongoose.Schema({
   },
   mimetype: {
     type: String,
+    required: true
+  },
+  data: {
+    type: Buffer,
     required: true
   },
   hash: {

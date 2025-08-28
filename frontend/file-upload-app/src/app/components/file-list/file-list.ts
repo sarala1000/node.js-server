@@ -27,6 +27,7 @@ export class FileListComponent implements OnInit {
 
     this.fileService.getFiles().subscribe({
       next: (files) => {
+        console.log('Files received from backend:', files.map(f => ({ id: f.id, filename: f.filename })));
         this.files = files;
         this.isLoading = false;
       },
@@ -39,6 +40,7 @@ export class FileListComponent implements OnInit {
   }
 
   deleteFile(fileId: string): void {
+    console.log('Attempting to delete file with ID:', fileId);
     if (!confirm('Are you sure you want to delete this file?')) {
       return;
     }
@@ -60,6 +62,30 @@ export class FileListComponent implements OnInit {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  downloadFile(fileId: string): void {
+    this.fileService.downloadFile(fileId).subscribe({
+      next: (blob) => {
+        // Find the file to get its name
+        const file = this.files.find(f => f.id === fileId);
+        const fileName = file ? file.filename : 'download';
+        
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      },
+      error: (error) => {
+        console.error('Error downloading file:', error);
+        alert('Error downloading file');
+      }
+    });
   }
 
   formatDate(dateString: string): string {

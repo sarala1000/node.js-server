@@ -28,6 +28,9 @@
           </div>
         </div>
         <div class="file-actions">
+          <button class="download-btn" (click)="downloadFile(file.id)">
+            📥 Download
+          </button>
           <button class="delete-btn" (click)="deleteFile(file.id)">
             🗑️ Delete
           </button>
