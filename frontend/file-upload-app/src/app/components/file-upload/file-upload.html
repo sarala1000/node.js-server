@@ -47,18 +47,18 @@
   <!-- Duplicate File Dialog -->
   <div class="duplicate-dialog" *ngIf="showDuplicateDialog">
     <div class="duplicate-content">
-      <h3>קובץ קיים</h3>
-      <p>הקובץ "{{ duplicateFileName }}" כבר קיים במערכת.</p>
-      <p>מה תרצי לעשות?</p>
+      <h3>File Already Exists</h3>
+      <p>The file "{{ duplicateFileName }}" already exists in the system.</p>
+      <p>What would you like to do?</p>
       
       <div class="duplicate-actions">
         <button class="replace-btn" (click)="replaceFile()" [disabled]="isUploading">
           <span *ngIf="isUploading" class="loading"></span>
-          {{ isUploading ? 'מחליפה...' : 'החליפי עם הקובץ החדש' }}
+          {{ isUploading ? 'Replacing...' : 'Replace with New File' }}
         </button>
         
         <button class="cancel-btn" (click)="cancelReplace()" [disabled]="isUploading">
-          ביטול - השאירי את הקובץ הקיים
+          Cancel - Keep Existing File
         </button>
       </div>
     </div>
