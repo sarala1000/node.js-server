@@ -70,18 +70,8 @@ export class FileUploadComponent implements OnInit {
     this.selectedFile = file;
     console.log('Selected file set to:', this.selectedFile?.name);
     
-    // Force change detection immediately
-    this.ngZone.run(() => {
-      this.cdr.detectChanges();
-    });
-    
-    // Double check after change detection
-    setTimeout(() => {
-      console.log('After timeout - selected file:', this.selectedFile?.name);
-      this.ngZone.run(() => {
-        this.cdr.detectChanges();
-      });
-    }, 100);
+    // Force change detection immediately - NO DELAY!
+    this.cdr.detectChanges();
   }
 
   async uploadFile(): Promise<void> {
